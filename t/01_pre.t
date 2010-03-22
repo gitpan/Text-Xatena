@@ -36,3 +36,25 @@ quote1
     </blockquote>
 </pre>
 
+=== test
+--- input
+>|
+http://example.com/
+|<
+--- expected
+<pre>
+<a href="http://example.com/">http://example.com/</a>
+</pre>
+
+=== test
+--- input
+>|
+quote
+|<
+test
+--- expected
+<pre>
+quote
+</pre>
+<p>test</p>
+
