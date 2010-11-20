@@ -9,7 +9,7 @@ use Text::Xatena::Node;
 use Text::Xatena::Node::Root;
 use Text::Xatena::Inline;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 our $SYNTAXES = [
     'Text::Xatena::Node::SuperPre',
@@ -64,6 +64,8 @@ sub _format_hatena_compat {
     local $Text::Xatena::Node::Section::ENDOFNODE = "";
     local *Text::Xatena::Node::as_html_paragraph = sub {
         my ($self, $text, %opts) = @_;
+        $text = $self->inline($text, %opts);
+
         $text =~ s{^\n}{}g;
         if ($opts{stopp}) {
             $text;
@@ -81,13 +83,14 @@ sub _format_hatena_compat {
 sub _parse {
     my ($self, $string) = @_;
 
-    my $s     = Text::Xatena::LineScanner->new($string);
-    my $root  = Text::Xatena::Node::Root->new ;
-    my $stack = [ $root ];
+    my @syntaxes = @{ $self->{syntaxes} };
+    my $s        = Text::Xatena::LineScanner->new($string);
+    my $root     = Text::Xatena::Node::Root->new ;
+    my $stack    = [ $root ];
     loop: until ($s->eos) {
-        my $parent   = $stack->[-1];
+        my $parent = $stack->[-1];
 
-        for my $pkg (@{ $self->{syntaxes} }) {
+        for my $pkg (@syntaxes) {
             $pkg->parse($s, $parent, $stack) and next loop;
         }
 
@@ -117,7 +120,7 @@ Text::Xatena - Text-to-HTML converter with Xatena syntax.
       inline => Text::Xatena::Inline::Aggressive->new(cache => Cache::MemoryCache->new)
   );
 
-Customizing inline formating rule
+Customizing inline formatting rule
 
   Text::Xatena->new->format($string,
       inline => MyInline->new
@@ -150,7 +153,7 @@ especially for programmers, writers treating long text.
 Xatena syntax is similar to Hatena syntax (implemented as L<Text::Hatena|Text::Hatena>),
 but independent from Hatena services and more expandability.
 
-Most block level syntaxes are supported and more compatibility with Hatena::Diary
+Most block level syntax notations are supported and more compatibility with Hatena::Diary
 than Text::Hatena 0.20.
 
 And don't support rare syntax or what isn't to be done of syntax formatter.
@@ -405,7 +408,7 @@ is convert to
     </tr>
   </table>
 
-=head2 Inline syntaxes
+=head2 Inline syntax
 
 =over 2
 
@@ -422,7 +425,7 @@ is convert to
   [http://example.com/:title=Foobar]
   [http://example.com/:barcode] # show qrcode with google chart API
 
-=item Deter inline syntaxes syntax
+=item Deter inline syntax
 
   []http://example.com/[]
 
@@ -432,7 +435,7 @@ is convert to
 
 Some default behaviors of Xatena syntax are different from Hatena::Diary syntax.
 
-Big differents:
+Big differences:
 
 =over 4
 
@@ -444,7 +447,7 @@ Big differents:
 
 =back
 
-But Xatena supports Hatena::Diary compatibile mode, you can change the behavior with a option.
+But Xatena supports Hatena::Diary compatible mode, you can change the behavior with a option.
 
   my $thx = Text::Xatena->new(hatena_compatible => 1);
 
