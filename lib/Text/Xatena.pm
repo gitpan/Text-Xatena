@@ -9,9 +9,10 @@ use Text::Xatena::Node;
 use Text::Xatena::Node::Root;
 use Text::Xatena::Inline;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 our $SYNTAXES = [
+    'Text::Xatena::Node::SeeMore',
     'Text::Xatena::Node::SuperPre',
     'Text::Xatena::Node::StopP',
     'Text::Xatena::Node::Blockquote',
@@ -48,9 +49,22 @@ sub format {
     }
 }
 
+sub inline {
+    my ($self, $new) = @_;
+    if (@_ > 1) {
+        $self->{inline} = $new;
+    } else {
+        $self->{inline};
+    }
+}
+
 sub _format {
     my ($self, $string, %opts) = @_;
-    $opts{inline} ||= Text::Xatena::Inline->new;
+
+    $opts{inline} ||= do {
+        $self->{inline} ||= Text::Xatena::Inline->new;
+    };
+
     $self->_parse($string)->as_html(
         %opts
     );
