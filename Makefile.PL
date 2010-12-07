@@ -1,4 +1,5 @@
 BEGIN {
+	push @INC, 'inc';
 	my @mip = qw(
 		Module::Install::AuthorTests
 		Module::Install::Repository
@@ -8,14 +9,12 @@ BEGIN {
 	for (@mip) {
 		eval "require $_";
 		if ($@) {
-			eval "require inc::$_";
-			if ($@) {
-				warn $@;
-				printf("# Install following (perl Makefile.PL | cpanm):\n%s", join("\n", @mip));
-				exit 1;
-			}
+			warn $@;
+			printf("# Install following (perl Makefile.PL | cpanm):\n%s", join("\n", @mip));
+			exit 1;
 		}
 	}
+	pop @INC;
 };
 
 use inc::Module::Install;
@@ -37,6 +36,7 @@ test_requires 'Test::Base';
 test_requires 'Test::Most';
 test_requires 'HTML::Parser';
 test_requires 'Cache::MemoryCache';
+test_requires 'Test::HTML::Differences';
 
 tests 't/*.t t/*/*.t t/*/*/*.t t/*/*/*/*.t t/*/*/*/*/*.t';
 author_tests 'xt';

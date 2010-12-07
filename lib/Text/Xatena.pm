@@ -9,7 +9,7 @@ use Text::Xatena::Node;
 use Text::Xatena::Node::Root;
 use Text::Xatena::Inline;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 our $SYNTAXES = [
     'Text::Xatena::Node::SeeMore',
@@ -80,15 +80,27 @@ sub _format_hatena_compat {
         my ($self, $text, %opts) = @_;
         $text = $self->inline($text, %opts);
 
-        $text =~ s{^\n}{}g;
+        $text =~ s{\n$}{}g;
         if ($opts{stopp}) {
             $text;
         } else {
-            "<p>" . join("</p>\n<p><br /></p>\n<p>", map { join("</p>\n<p>", split /\n+/) } split(/\n\n\n/, $text)) . "</p>\n";
+            "<p>" . join("",
+                map {
+                    if (/^(\n+)$/) {
+                        "</p>" . ("<br />\n" x (length($1) - 2)) . "<p>";
+                    } else {
+                        $_;
+                    }
+                }
+                split(/(\n+)/, $text)
+            ) . "</p>\n";
         }
     };
 
-    $opts{inline} ||= Text::Xatena::Inline->new;
+    $opts{inline} ||= do {
+        $self->{inline} ||= Text::Xatena::Inline->new;
+    };
+
     $self->_parse($string)->as_html(
         %opts
     );
