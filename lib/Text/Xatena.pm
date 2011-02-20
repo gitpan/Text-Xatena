@@ -9,7 +9,7 @@ use Text::Xatena::Node;
 use Text::Xatena::Node::Root;
 use Text::Xatena::Inline;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 our $SYNTAXES = [
     'Text::Xatena::Node::SeeMore',
@@ -42,6 +42,7 @@ sub new {
 
 sub format {
     my ($self, $string, %opts) = @_;
+    $string =~ s{\r\n?|\n}{\n}g;
     if ($opts{hatena_compatible} || $self->{hatena_compatible}) {
         $self->_format_hatena_compat($string, %opts);
     } else {
