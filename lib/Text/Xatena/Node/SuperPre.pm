@@ -9,6 +9,8 @@ use constant {
     ENDOFNODE => qr/^\|\|<$/,
 };
 
+our $SUPERPRE_CLASS_NAME = 'code';
+
 sub parse {
     my ($class, $s, $parent, $stack) = @_;
     if ($s->scan(BEGINNING)) {
@@ -26,7 +28,8 @@ sub lang { $_[0]->{lang} }
 
 sub as_html {
     my ($self, %opts) = @_;
-    sprintf('<pre class="code%s">%s</pre>',
+    sprintf("<pre class=\"%s%s\">%s</pre>",
+        $SUPERPRE_CLASS_NAME,
         $self->lang ? " lang-" . $self->lang : "",
         escape_html(join "", @{ $self->children })
     );
