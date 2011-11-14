@@ -5,15 +5,16 @@ author:
 build_requires:
   Cache::MemoryCache: 0
   Encode: 0
-  ExtUtils::MakeMaker: 6.42
+  ExtUtils::MakeMaker: 6.36
   HTML::Parser: 0
   LWP::UserAgent: 0
   Test::HTML::Differences: 0
   Test::Most: 0
 configure_requires:
-  ExtUtils::MakeMaker: 6.42
+  ExtUtils::MakeMaker: 6.36
 distribution_type: module
-generated_by: 'Module::Install version 1.00'
+dynamic_config: 1
+generated_by: 'Module::Install version 1.04'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -21,7 +22,6 @@ meta-spec:
 name: Text-Xatena
 no_index:
   directory:
-    - examples
     - inc
     - t
     - xt
@@ -36,4 +36,4 @@ requires:
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://github.com/cho45/Text-Xatena.git
-version: 0.11
+version: 0.12
