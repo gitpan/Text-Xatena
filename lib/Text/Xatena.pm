@@ -8,8 +8,9 @@ use Text::Xatena::LineScanner;
 use Text::Xatena::Node;
 use Text::Xatena::Node::Root;
 use Text::Xatena::Inline;
+use Text::Xatena::Util;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 our $SYNTAXES = [
     'Text::Xatena::Node::SeeMore',
@@ -27,15 +28,27 @@ our $SYNTAXES = [
 sub new {
     my ($class, %opts) = @_;
 
-    $opts{syntaxes} ||= $SYNTAXES;
+    my $self = bless { %opts }, $class;
 
-    my $self = bless {
-        %opts
-    }, $class;
+    $self->{templates} ||= {};
+    $self->{templates} = {
+        map {
+            my $pkg = "Text::Xatena::Node::$_" unless $_ =~ /::/;
+            $pkg => $self->{templates}->{$_};
+        }
+        keys %{ $self->{templates} }
+    };
 
-    for my $pkg (@{ $self->{syntaxes} }) {
-        $pkg->use or die $@;
-    }
+    $self->{syntaxes} = [
+        map {
+            $_ = "Text::Xatena::Node::$_" unless $_ =~ /::/;
+            $_->use or die $@;
+            $_;
+        }
+        @{ $opts{syntaxes} || $SYNTAXES }
+    ];
+
+    $self->{inline}   ||= Text::Xatena::Inline->new;
 
     $self;
 }
@@ -43,10 +56,40 @@ sub new {
 sub format {
     my ($self, $string, %opts) = @_;
     $string =~ s{\r\n?|\n}{\n}g;
-    if ($opts{hatena_compatible} || $self->{hatena_compatible}) {
-        $self->_format_hatena_compat($string, %opts);
+
+    $self->inline($opts{inline}) if $opts{inline};
+
+    if ($self->{hatena_compatible}) {
+        $self->{templates}->{'Text::Xatena::Node::Section'} = q[
+            <h{{= $level + 2 }}>{{= $title }}</h{{= $level + 2 }}>
+            {{= $content }}
+        ];
+
+        no warnings "once", "redefine";
+        local *Text::Xatena::Node::as_html_paragraph = sub {
+            my ($self, $context, $text, %opts) = @_;
+            $text = $context->inline->format($text, %opts);
+
+            $text =~ s{\n$}{}g;
+            if ($opts{stopp}) {
+                $text;
+            } else {
+                "<p>" . join("",
+                    map {
+                        if (/^(\n+)$/) {
+                            "</p>" . ("<br />\n" x (length($1) - 2)) . "<p>";
+                        } else {
+                            $_;
+                        }
+                    }
+                    split(/(\n+)/, $text)
+                ) . "</p>\n";
+            }
+        };
+
+        $self->_parse($string)->as_html($self);
     } else {
-        $self->_format($string, %opts);
+        $self->_parse($string)->as_html($self);
     }
 }
 
@@ -57,54 +100,6 @@ sub inline {
     } else {
         $self->{inline};
     }
-}
-
-sub _format {
-    my ($self, $string, %opts) = @_;
-
-    $opts{inline} ||= do {
-        $self->{inline} ||= Text::Xatena::Inline->new;
-    };
-
-    $self->_parse($string)->as_html(
-        %opts
-    );
-}
-
-sub _format_hatena_compat {
-    my ($self, $string, %opts) = @_;
-
-    no warnings "once", "redefine";
-    local $Text::Xatena::Node::Section::BEGINNING = "";
-    local $Text::Xatena::Node::Section::ENDOFNODE = "";
-    local *Text::Xatena::Node::as_html_paragraph = sub {
-        my ($self, $text, %opts) = @_;
-        $text = $self->inline($text, %opts);
-
-        $text =~ s{\n$}{}g;
-        if ($opts{stopp}) {
-            $text;
-        } else {
-            "<p>" . join("",
-                map {
-                    if (/^(\n+)$/) {
-                        "</p>" . ("<br />\n" x (length($1) - 2)) . "<p>";
-                    } else {
-                        $_;
-                    }
-                }
-                split(/(\n+)/, $text)
-            ) . "</p>\n";
-        }
-    };
-
-    $opts{inline} ||= do {
-        $self->{inline} ||= Text::Xatena::Inline->new;
-    };
-
-    $self->_parse($string)->as_html(
-        %opts
-    );
 }
 
 sub _parse {
@@ -128,6 +123,14 @@ sub _parse {
     $root;
 }
 
+sub _tmpl {
+    my ($self, $pkg, $default, $stash) = @_;
+    my $tmpl = $self->{templates}->{$pkg};
+    my $sub  = ref($tmpl) eq 'CODE' ? $tmpl : template($tmpl || $default, [ keys %$stash ]);
+    $self->{templates}->{$pkg} = $sub;
+    $sub->($stash);
+}
+
 1;
 __END__
 
@@ -143,15 +146,16 @@ Text::Xatena - Text-to-HTML converter with Xatena syntax.
   $thx->format($string);
 
   # with some aggressive functions
-  $thx->format($string,
+  my $thx = Text::Xatena->new(
       inline => Text::Xatena::Inline::Aggressive->new(cache => Cache::MemoryCache->new)
   );
+  $thx->format($string);
 
 Customizing inline formatting rule
 
-  Text::Xatena->new->format($string,
+  Text::Xatena->new(
       inline => MyInline->new
-  );
+  )->format($string);
 
   package MyInline;
   use strict;
@@ -468,7 +472,8 @@ and footnote object is available in inline object, so you will do expand it like
 
   my $thx = Text::Xatena->new;
   my $inline = Text::Xatena::Inline->new;
-  my $formatted = $thx->format('aaa((foobar)) bbb((barbaz))', inline => $inline);
+  $thx->inline($inline);
+  my $formatted = $thx->format('aaa((foobar)) bbb((barbaz))');
   my $out = '';
   $out .= '<div class="body">';
   $out .= $formatted;
@@ -504,6 +509,24 @@ Big differences:
 But Xatena supports Hatena::Diary compatible mode, you can change the behavior with a option.
 
   my $thx = Text::Xatena->new(hatena_compatible => 1);
+
+=head2 Customize templates in formatting
+
+If you want to customize HTML, you can specify templates in Text::Xatena#new.
+This is interpreted as L<Text::MicroTemplate>.
+
+You should reuse Text::Xatena object for performance.
+
+  my $thx = Text::Xatena->new(
+    templates => {
+      'Section' => q[
+        <section class="level-{{= $level }}">
+            <h1>{{= $title }}</h1>
+            {{= $content }}
+        </section>
+      ],
+    }
+  );
 
 =head1 AUTHOR
 

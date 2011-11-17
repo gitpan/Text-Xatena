@@ -4,6 +4,7 @@ use lib 'lib';
 use lib 't/lib';
 use Test::More;
 use Text::Xatena;
+use Text::Xatena::Util;
 use Encode;
 use Text::Xatena::Test;
 use Text::Xatena::Test::MyInline;
@@ -34,8 +35,13 @@ subtest "replace inline" => sub {
     my $thx = Text::Xatena->new;
     is $thx->format('TEST'), "<p>TEST</p>\n";
     {
+        my $thx = Text::Xatena->new(inline => Text::Xatena::Test::MyInline->new);
+        is $thx->format('TEST'), "<p>XXXX</p>\n";
+    };
+    is $thx->format('TEST'), "<p>TEST</p>\n";
+    {
+        my $thx = Text::Xatena->new;
         is $thx->format('TEST', inline => Text::Xatena::Test::MyInline->new), "<p>XXXX</p>\n";
-        is $thx->format('http://example.com/'), qq{<p><a href="http://example.com/">http://example.com/</a></p>\n};
     };
     is $thx->format('TEST'), "<p>TEST</p>\n";
 
@@ -43,9 +49,29 @@ subtest "replace inline" => sub {
 };
 
 subtest "replace block" => sub {
-    my $thx = Text::Xatena->new(syntaxes => [
-    ]);
-    eq_or_diff_html $thx->format(">>\nquote\n<<"), "<p>>><br />quote<br /><<</p>";
+    {
+        my $thx = Text::Xatena->new(syntaxes => [
+        ]);
+        eq_or_diff_html $thx->format(">>\nquote\n<<"), "<p>>><br />quote<br /><<</p>";
+    };
+
+    {
+        my $thx = Text::Xatena->new(syntaxes => [qw/List/]);
+        eq_or_diff_html $thx->format(unindent q{
+            * foobar
+
+            - 1111
+            - 2222
+            - 3333
+        }), q{
+            <p>* foobar</p>
+            <ul>
+                <li>1111</li>
+                <li>2222</li>
+                <li>3333</li>
+            </ul>
+        };
+    };
 
     done_testing;
 };
