@@ -10,7 +10,7 @@ use Text::Xatena::Node::Root;
 use Text::Xatena::Inline;
 use Text::Xatena::Util;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 our $SYNTAXES = [
     'Text::Xatena::Node::SeeMore',
@@ -33,7 +33,7 @@ sub new {
     $self->{templates} ||= {};
     $self->{templates} = {
         map {
-            my $pkg = "Text::Xatena::Node::$_" unless $_ =~ /::/;
+            my $pkg = $_ =~ /::/ ? $_ : "Text::Xatena::Node::$_";
             $pkg => $self->{templates}->{$_};
         }
         keys %{ $self->{templates} }
@@ -41,9 +41,9 @@ sub new {
 
     $self->{syntaxes} = [
         map {
-            $_ = "Text::Xatena::Node::$_" unless $_ =~ /::/;
-            $_->use or die $@;
-            $_;
+            my $pkg = $_ =~ /::/ ? $_ : "Text::Xatena::Node::$_";
+            $pkg->use or die $@;
+            $pkg;
         }
         @{ $opts{syntaxes} || $SYNTAXES }
     ];
